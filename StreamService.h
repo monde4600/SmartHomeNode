@@ -2,10 +2,13 @@
 #include <Arduino.h>
 #include <Firebase_ESP_Client.h>
 
+#define GETBIT(variable,bit_number)   (variable<<bit_number) &1
+#define WRITEBIT(variable,bit_number,value)  variable =  ((variable & ~(1<<bit_number))|(value)<<(bit_number))
+#define TOGGLEBIT(variable,bit_number)    variable ^= (1<<(bit_number))
 // desired/actual caches
 extern bool desiredInited;
-extern bool lastDesired[9];
-extern bool lastActual[9];
+extern uint8_t lastDesired;
+extern uint8_t lastActual;
 
 // feedback filtering state (mirrors your original globals)
 extern uint8_t fbCandidate;
@@ -16,7 +19,7 @@ extern uint8_t fbCount;
 extern uint8_t DesiredTimeout[9];
 
 // ignore flags
-extern bool     ignoreDesiredEvent[9];
+extern uint8_t     ignoreDesiredEvent;
 extern uint32_t ignoreUntilMs[9];
 
 // stream error counter

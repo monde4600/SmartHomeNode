@@ -5,9 +5,6 @@
 extern volatile uint8_t relayOut;
 
 // channel mask helper
-inline uint8_t chMask(uint8_t ch) { // 1..8
-  return (ch >= 1 && ch <= 8) ? (1u << (ch - 1)) : 0;
-}
 
 void relayIO_beginPins();
 void writeRelays595(uint8_t value);

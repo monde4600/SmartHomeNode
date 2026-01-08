@@ -5,22 +5,20 @@
 #include "Feedback165.h"
 #include "AppConfig.h"
 
-#define BITMASK(variable,bit_number)   (variable<<bit_number) &1
-
 // ===================== STATE (same as your original globals) =====================
 uint8_t fbCandidate = 0;
 uint8_t fbStable    = 0;
 uint8_t fbCount     = 0;
 
 bool desiredInited = false;
-bool lastDesired[9]; // 1..8
-bool lastActual[9];  // 1..8
+uint8_t lastDesired; // 0..7
+uint8_t lastActual;  // 0..7
 
-uint8_t DesiredTimeout[9] = {TimerDeactivate}; // (kept exactly as you had)
+uint8_t DesiredTimeout[8] = {TimerDeactivate}; // (kept exactly as you had)
 
 // منع loop لما النود يكتب desired
-bool     ignoreDesiredEvent[9];
-uint32_t ignoreUntilMs[9];
+uint8_t     ignoreDesiredEvent;
+uint32_t ignoreUntilMs[8];
 
 // ===================== STREAM =====================
 uint64_t StreamFailError = 0;
@@ -31,27 +29,27 @@ static uint8_t streamTime = STREAMTICKTIME;
 // ✅ يكتب actual فقط لو اتغير فعلاً
 void writeActualBit(uint8_t ch, bool on)
 {
-  if (lastActual[ch] == on) return;
-  lastActual[ch] = on;
+  if (GETBIT(lastActual,ch) == on) return;
+  WRITEBIT(lastActual,ch,on);
   if(!Firebase.RTDB.setBool(&fbdo, actualPath(ch).c_str(), on))
   {
-    lastActual[ch] ^= 1;
-    fbStable ^= 1<<(ch-1);
+    TOGGLEBIT(lastActual,ch);
+    TOGGLEBIT(fbStable,ch);
   }
 }
 
 // ✅ يخلي desired = actual فقط لو مختلف + يمنع loop
 void syncDesiredToActual(uint8_t ch, bool on)
 {
-  if (lastDesired[ch] == on) return;
+  if (GETBIT(lastDesired,ch) == on) return;
 
-  ignoreDesiredEvent[ch] = true;
+  WRITEBIT(ignoreDesiredEvent,ch,true);
   ignoreUntilMs[ch] = millis() + 400; // تجاهل event لمدة 0.4 ثانية
 
-  lastDesired[ch] = on;
+  WRITEBIT(lastDesired,ch,on);
   if(!Firebase.RTDB.setBool(&fbdo, desiredPath(ch).c_str(), on))
   {
-    lastDesired[ch] ^= 1;
+    TOGGLEBIT(lastDesired,ch);
     DesiredTimeout[ch]=DesiredTimeoutinS;
   }
 }
@@ -83,14 +81,14 @@ static void onStreamCallback(FirebaseStream data)
   if (!isDesired) return;
 
   // ✅ تجاهل أي desired event النود هو اللي كاتبه (sync)
-  if (ignoreDesiredEvent[ch] && (int32_t)(ignoreUntilMs[ch] - millis()) > 0) {
+  if (GETBIT(ignoreDesiredEvent,ch) && (int32_t)(ignoreUntilMs[ch] - millis()) > 0) {
     // حدّث الكاش فقط
-    if (type == "boolean") lastDesired[ch] = data.boolData();
-    else if (type == "int") lastDesired[ch] = (data.intData() != 0);
-    else if (type == "float") lastDesired[ch] = (data.floatData() != 0);
+    if (type == "boolean") WRITEBIT(lastDesired,ch, data.boolData());
+    else if (type == "int") WRITEBIT(lastDesired,ch,(data.intData() != 0));
+    else if (type == "float") WRITEBIT(lastDesired,ch,(data.floatData() != 0));
     else if (type == "string") {
       String s = data.stringData();
-      lastDesired[ch] = (s == "1" || s == "true" || s == "TRUE");
+      WRITEBIT(lastDesired,ch, (s == "1" || s == "true" || s == "TRUE"));
     }
     return;
   }
@@ -106,13 +104,13 @@ static void onStreamCallback(FirebaseStream data)
 
   // أول مرة: cache فقط (من غير Toggle)
   if (!desiredInited) {
-    lastDesired[ch] = desiredVal;
+    WRITEBIT(lastDesired,ch, desiredVal);
     return;
   }
 
   // ✅ أي تغيير في desired = أمر Toggle
-  if (desiredVal != lastDesired[ch]) {
-    lastDesired[ch] = desiredVal;
+  if (desiredVal != GETBIT(lastDesired,ch)) {
+    WRITEBIT(lastDesired,ch,desiredVal);
     toggleRelay(ch);
     DesiredTimeout[ch]=DesiredTimeoutinS;
     // actual + desired-sync هيتموا لما feedback يثبت
@@ -129,16 +127,16 @@ static void onStreamTimeout(bool timeout)
 
 void initDesiredCacheOnce()
 {
-  for (uint8_t ch = 1; ch <= 8; ch++) {
-    ignoreDesiredEvent[ch] = false;
+  for (uint8_t ch = 0; ch <= 7; ch++) {
+    WRITEBIT(ignoreDesiredEvent,ch,false);
     ignoreUntilMs[ch] = 0;
 
-    lastActual[ch] = false; // baseline
+    WRITEBIT(lastActual,ch, false); // baseline
 
     if (Firebase.RTDB.getBool(&fbdo, desiredPath(ch).c_str())) {
-      lastDesired[ch] = fbdo.boolData();
+      WRITEBIT(lastDesired,ch,fbdo.boolData());
     } else {
-      lastDesired[ch] = false;
+      WRITEBIT(lastDesired,ch,false);
     }
   }
   desiredInited = true;
@@ -157,15 +155,17 @@ void bootSyncFromFeedback()
   fbCount = FB_STABLE_COUNT;
 
   // اكتب actual + sync desired (مرة واحدة)
-  for (uint8_t ch = 1; ch <= 8; ch++) {
-    bool on = (fb & chMask(ch)) != 0;
+  for (uint8_t ch = 0; ch <= 7; ch++) 
+  {
+    bool on = GETBIT(fb,ch);
 
     // اجبار كتابة actual مرة واحدة
-    lastActual[ch] = !on;
+    WRITEBIT(lastActual,ch,!on);
     writeActualBit(ch, on);
 
     // sync desired = actual (لو مختلف)
-    if (lastDesired[ch] != on) {
+    if (GETBIT(lastDesired,ch) != on)
+    {
       syncDesiredToActual(ch, on);
     }
   }
@@ -214,17 +214,17 @@ void StreamCallFun()
 //function call every 1000ms
 void synkdesiredtoactualaftertimeout()
 {
-  for(uint8_t ch=1;ch<=8;ch++)
+  for(uint8_t ch=0;ch<=7;ch++)
   {
     if(DesiredTimeout[ch]!=TimerDeactivate)
     {
       if(--DesiredTimeout[ch]==0)
       {
         DesiredTimeout[ch]=TimerDeactivate;
-        lastDesired[ch]=lastActual[ch];
-        if(!Firebase.RTDB.setBool(&fbdo, desiredPath(ch).c_str(), lastActual[ch]))
+        WRITEBIT(lastDesired,ch,GETBIT(lastActual,ch));
+        if(!Firebase.RTDB.setBool(&fbdo, desiredPath(ch).c_str(),GETBIT(lastActual,ch)))
         {
-          lastDesired[ch] ^= 1;
+          TOGGLEBIT(lastDesired,ch);
           DesiredTimeout[ch]=DesiredTimeoutinS;
         }
       }

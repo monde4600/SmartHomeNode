@@ -28,10 +28,9 @@ void writeRelays595(uint8_t value)
 
 void toggleRelay(uint8_t ch)
 {
-  uint8_t m = chMask(ch);
-  if (!m) return;
+ 
 
-  relayOut ^= m;
+  TOGGLEBIT(relayOut,ch);
   writeRelays595(relayOut);
 
   // ✅ حفظ آخر حالة للريلايات (مؤجل)

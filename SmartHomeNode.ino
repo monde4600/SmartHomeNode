@@ -63,9 +63,9 @@ void setup() {
 void loop() {
 
   // فك ignore flags بعد انتهاء الوقت
-  for (uint8_t ch = 1; ch <= 8; ch++) {
-    if (ignoreDesiredEvent[ch] && (int32_t)(ignoreUntilMs[ch] - millis()) <= 0) {
-      ignoreDesiredEvent[ch] = false;
+  for (uint8_t ch = 0; ch <= 7; ch++) {
+    if (GETBIT(ignoreDesiredEvent,ch) && (int32_t)(ignoreUntilMs[ch] - millis()) <= 0) {
+      WRITEBIT(ignoreDesiredEvent,ch,false);
     }
   }
 
@@ -82,14 +82,15 @@ void loop() {
     fbCandidate = readFeedbackStable(FB_STABLE_COUNT, FB_SAMPLE_PERIOD_MS);
 
     // لما تثبت القراءة: لو اختلفت عن stable -> حدّث القنوات المتغيرة فقط
-    if ( fbStable != fbCandidate) {
+    if ( fbStable != fbCandidate) 
+    {
       uint8_t changed = fbStable ^ fbCandidate;
       fbStable = fbCandidate;
 
-      for (uint8_t ch = 1; ch <= 8; ch++) {
-        uint8_t m = chMask(ch);
-        if (changed & m) {
-          bool on = (fbStable & m) != 0;
+      for (uint8_t ch = 0; ch <= 7; ch++) 
+      {
+        if (GETBIT(changed ,ch)) {
+          bool on = GETBIT(fbStable,ch);
 
           // ✅ update only changed channels
           writeActualBit(ch, on);
