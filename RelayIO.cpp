@@ -1,3 +1,4 @@
+#include"bit_math.h"
 #include "RelayIO.h"
 #include "Pins.h"
 #include "AppConfig.h"

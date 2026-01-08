@@ -1,3 +1,4 @@
+#include"bit_math.h"
 #include "RelayStorage.h"
 #include "AppConfig.h"
 #include "RelayIO.h"

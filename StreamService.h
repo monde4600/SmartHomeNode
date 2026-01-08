@@ -1,10 +1,6 @@
 #pragma once
 #include <Arduino.h>
 #include <Firebase_ESP_Client.h>
-
-#define GETBIT(variable,bit_number)   (variable<<bit_number) &1
-#define WRITEBIT(variable,bit_number,value)  variable =  ((variable & ~(1<<bit_number))|(value)<<(bit_number))
-#define TOGGLEBIT(variable,bit_number)    variable ^= (1<<(bit_number))
 // desired/actual caches
 extern bool desiredInited;
 extern uint8_t lastDesired;
@@ -16,11 +12,11 @@ extern uint8_t fbStable;
 extern uint8_t fbCount;
 
 // timeout array (as in your original code)
-extern uint8_t DesiredTimeout[9];
+extern uint8_t DesiredTimeout[8];
 
 // ignore flags
 extern uint8_t     ignoreDesiredEvent;
-extern uint32_t ignoreUntilMs[9];
+extern uint32_t ignoreUntilMs[8];
 
 // stream error counter
 extern uint64_t StreamFailError;

@@ -1,3 +1,4 @@
+#include"bit_math.h"
 #include "StreamService.h"
 #include "FirebaseService.h"
 #include "Paths.h"
@@ -14,7 +15,7 @@ bool desiredInited = false;
 uint8_t lastDesired; // 0..7
 uint8_t lastActual;  // 0..7
 
-uint8_t DesiredTimeout[8] = {TimerDeactivate}; // (kept exactly as you had)
+uint8_t DesiredTimeout[8] ; // (kept exactly as you had)
 
 // منع loop لما النود يكتب desired
 uint8_t     ignoreDesiredEvent;
