@@ -1,8 +1,8 @@
 #pragma once
 
 // ===================== WIFI =====================
-#define WIFI_SSID     "Guest"
-#define WIFI_PASS     "Arr0w@ve"
+#define WIFI_SSID     "OPPO"
+#define WIFI_PASS     "1234567890"
 
 // ===================== FIREBASE =====================
 #define API_KEY       "AIzaSyDQt4wIFuKMwDAA16EmvmRm-EfeSQeEQ8o"

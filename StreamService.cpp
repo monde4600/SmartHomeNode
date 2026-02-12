@@ -63,7 +63,7 @@ static bool parseChannelFromStreamPath(const String &path, uint8_t &ch, bool &is
   if (secondSlash < 0) return false;
 
   int chInt = path.substring(1, secondSlash).toInt();
-  if (chInt < 1 || chInt > 8) return false;
+  if (chInt < 0 || chInt > 7) return false;
 
   String key = path.substring(secondSlash + 1);
   isDesired = (key == "desired");
